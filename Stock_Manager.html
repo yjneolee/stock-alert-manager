@@ -82,7 +82,7 @@ header {
   color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
   display: flex; align-items: center; gap: 8px;
 }
-.config-arrow { color: var(--muted); font-size: 12px; transition: transform .2s; }
+.config-arrow { color: var(--muted); font-size: 12px; transition: transform .2s; display: inline-block; }
 .config-arrow.open { transform: rotate(180deg); }
 
 .config-body {
@@ -157,6 +157,7 @@ code {
 .btn-green { background: rgba(0,227,150,.1); color: var(--green); border: 1px solid rgba(0,227,150,.25); }
 .btn-green:hover { background: rgba(0,227,150,.2); }
 .btn-yellow { background: rgba(255,176,31,.15); color: var(--yellow); border: 1px solid rgba(255,176,31,.3); }
+.btn-yellow:hover { background: rgba(255,176,31,.25); }
 .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 6px; }
 .btn-xs { padding: 4px 8px; font-size: 10px; border-radius: 5px; }
 .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
@@ -175,8 +176,7 @@ code {
 
 .card-header {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
   background: var(--s2);
 }
 .ticker-tag {
@@ -216,8 +216,7 @@ code {
 .line-item {
   display: flex; align-items: center; gap: 10px;
   background: var(--s2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 12px;
-  transition: border-color .15s;
+  border-radius: 8px; padding: 8px 12px; transition: border-color .15s;
 }
 .line-item:hover { border-color: var(--border2); }
 .line-color { width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0; }
@@ -323,7 +322,6 @@ code {
 <body>
 <div class="wrap">
 
-  <!-- 헤더 -->
   <header>
     <div>
       <div class="logo">PRICE ALERT</div>
@@ -341,21 +339,18 @@ code {
 
   <!-- 설정 패널 -->
   <div class="config-panel">
-    <div class="config-toggle" id="configToggleBtn">
-      <div class="config-toggle-title">
-        ⚙&nbsp; GitHub 연결 설정
-      </div>
-      <span class="config-arrow" id="configArrow">▼</span>
+    <div class="config-toggle" id="cfgToggle">
+      <div class="config-toggle-title">⚙&nbsp; GitHub 연결 설정</div>
+      <span class="config-arrow" id="cfgArrow">▼</span>
     </div>
-    <div class="config-body" id="configBody">
+    <div class="config-body" id="cfgBody">
       <div class="guide">
-        <div class="guide-title">⚡ Personal Access Token 발급 방법</div>
+        <div class="guide-title">⚡ Personal Access Token 발급</div>
         <div class="guide-steps">
-          <div class="guide-step"><div class="gs-num">1</div><span>github.com 우상단 프로필 → <code>Settings</code></span></div>
+          <div class="guide-step"><div class="gs-num">1</div><span>github.com → 우상단 프로필 → <code>Settings</code></span></div>
           <div class="guide-step"><div class="gs-num">2</div><span>왼쪽 사이드바 맨 아래 <code>Developer settings</code></span></div>
           <div class="guide-step"><div class="gs-num">3</div><span><code>Personal access tokens</code> → <code>Tokens (classic)</code> → <code>Generate new token (classic)</code></span></div>
-          <div class="guide-step"><div class="gs-num">4</div><span>권한: <code>repo</code> 체크 → <code>Generate token</code></span></div>
-          <div class="guide-step"><div class="gs-num">5</div><span><code>ghp_xxx...</code> 토큰 복사 후 아래 입력</span></div>
+          <div class="guide-step"><div class="gs-num">4</div><span>권한 <code>repo</code> 체크 → <code>Generate token</code> → 토큰 복사</span></div>
         </div>
       </div>
       <div class="config-grid">
@@ -384,13 +379,12 @@ code {
   <div class="toolbar">
     <span class="section-label">📋 WATCHLIST</span>
     <div class="toolbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="connect()" id="refreshBtn" disabled>↺ 새로고침</button>
-      <button class="btn btn-primary btn-sm" onclick="openAddStock()" id="addBtn" disabled>+ 종목 추가</button>
-      <button class="btn btn-green btn-sm" onclick="saveToGitHub()" id="saveBtn" disabled>🚀 GitHub에 저장</button>
+      <button class="btn btn-ghost btn-sm" id="refreshBtn" onclick="connect()" disabled>↺ 새로고침</button>
+      <button class="btn btn-primary btn-sm" id="addBtn" onclick="openAddStock()" disabled>+ 종목 추가</button>
+      <button class="btn btn-green btn-sm" id="saveBtn" onclick="saveToGitHub()" disabled>🚀 GitHub에 저장</button>
     </div>
   </div>
 
-  <!-- 종목 리스트 -->
   <div id="stockList">
     <div class="empty"><div class="ei">🔌</div>위에서 GitHub 연결 설정을 완료해주세요</div>
   </div>
@@ -406,24 +400,12 @@ code {
     </div>
     <div class="modal-body">
       <div class="two-col">
-        <div class="field">
-          <label>종목코드 *</label>
-          <input id="mTicker" placeholder="005930">
-        </div>
-        <div class="field">
-          <label>종목명 *</label>
-          <input id="mName" placeholder="삼성전자">
-        </div>
+        <div class="field"><label>종목코드 *</label><input id="mTicker" placeholder="005930"></div>
+        <div class="field"><label>종목명 *</label><input id="mName" placeholder="삼성전자"></div>
       </div>
       <div class="two-col">
-        <div class="field">
-          <label>첫 수평선 가격 (원)</label>
-          <input id="mPrice" type="number" placeholder="70000 (생략 가능)">
-        </div>
-        <div class="field">
-          <label>수평선 이름</label>
-          <input id="mLabel" placeholder="1차 지지선">
-        </div>
+        <div class="field"><label>첫 수평선 가격 (원)</label><input id="mPrice" type="number" placeholder="70000 (생략 가능)"></div>
+        <div class="field"><label>수평선 이름</label><input id="mLabel" placeholder="1차 지지선"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -441,33 +423,25 @@ code {
 
 <!-- 토스트 -->
 <div class="toast" id="toast">
-  <span id="toastIcon"></span>
-  <span id="toastMsg"></span>
+  <span id="toastIcon"></span><span id="toastMsg"></span>
 </div>
 
 <script>
-// ══════════════════════════════════════════
-// 상수 / 상태
-// ══════════════════════════════════════════
-const LINE_COLORS = ['#ff4560','#ffb01f','#00e396','#00d4ff','#7c6af7','#f472b6','#fb923c'];
-const FILE_PATH   = 'watchlist.json';
+var LINE_COLORS = ['#ff4560','#ffb01f','#00e396','#00d4ff','#7c6af7','#f472b6','#fb923c'];
+var FILE_PATH   = 'watchlist.json';
+var stocks  = [];
+var fileSha = '';
+var isDirty = false;
+var cfg     = { user:'', repo:'', token:'' };
 
-let stocks  = [];
-let fileSha = '';
-let isDirty = false;
-let cfg     = { user:'', repo:'', token:'' };
+// ── 초기화 ────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
 
-// ══════════════════════════════════════════
-// 초기화
-// ══════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function() {
-
-  // 설정 패널 토글 — DOMContentLoaded 이후 등록
-  document.getElementById('configToggleBtn').addEventListener('click', function() {
-    const body  = document.getElementById('configBody');
-    const arrow = document.getElementById('configArrow');
-    const isOpen = body.classList.contains('open');
-    if (isOpen) {
+  // 설정 패널 토글
+  document.getElementById('cfgToggle').addEventListener('click', function() {
+    var body  = document.getElementById('cfgBody');
+    var arrow = document.getElementById('cfgArrow');
+    if (body.classList.contains('open')) {
       body.classList.remove('open');
       arrow.classList.remove('open');
     } else {
@@ -476,24 +450,25 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // 저장된 설정 불러오기
+  // 저장된 설정 복원
   try {
-    const saved = localStorage.getItem('pa_cfg');
+    var saved = localStorage.getItem('pa_cfg');
     if (saved) {
       cfg = JSON.parse(saved);
       document.getElementById('cfgUser').value  = cfg.user  || '';
       document.getElementById('cfgRepo').value  = cfg.repo  || '';
       document.getElementById('cfgToken').value = cfg.token || '';
-      if (cfg.user && cfg.repo && cfg.token) connect();
-      else openConfig(); // 설정값 없으면 패널 열기
+      if (cfg.user && cfg.repo && cfg.token) {
+        connect();
+      } else {
+        openCfg();
+      }
     } else {
-      openConfig(); // 처음 방문이면 패널 열기
+      openCfg();
     }
-  } catch(e) {
-    openConfig();
-  }
+  } catch(e) { openCfg(); }
 
-  // Enter 키로 연결
+  // Enter 키 연결
   ['cfgUser','cfgRepo','cfgToken'].forEach(function(id) {
     document.getElementById(id).addEventListener('keydown', function(e) {
       if (e.key === 'Enter') connect();
@@ -501,14 +476,12 @@ window.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function openConfig() {
-  document.getElementById('configBody').classList.add('open');
-  document.getElementById('configArrow').classList.add('open');
+function openCfg() {
+  document.getElementById('cfgBody').classList.add('open');
+  document.getElementById('cfgArrow').classList.add('open');
 }
 
-// ══════════════════════════════════════════
-// 설정 저장
-// ══════════════════════════════════════════
+// ── 설정 저장 ─────────────────────────────
 function saveConfig() {
   cfg.user  = document.getElementById('cfgUser').value.trim();
   cfg.repo  = document.getElementById('cfgRepo').value.trim();
@@ -517,24 +490,20 @@ function saveConfig() {
   toast('💾', '설정이 브라우저에 저장됐어요');
 }
 
-// ══════════════════════════════════════════
-// GitHub API
-// ══════════════════════════════════════════
-function getHeaders() {
+// ── GitHub API ────────────────────────────
+function ghHeaders() {
   return {
     'Authorization': 'Bearer ' + cfg.token,
     'Content-Type':  'application/json',
     'Accept':        'application/vnd.github.v3+json',
-    'X-GitHub-Api-Version': '2022-11-28',
   };
 }
-
-function apiUrl() {
+function ghUrl() {
   return 'https://api.github.com/repos/' + cfg.user + '/' + cfg.repo + '/contents/' + FILE_PATH;
 }
 
-// ── 연결 및 불러오기 ──────────────────────
-async function connect() {
+// ── 연결 ──────────────────────────────────
+function connect() {
   cfg.user  = document.getElementById('cfgUser').value.trim()  || cfg.user;
   cfg.repo  = document.getElementById('cfgRepo').value.trim()  || cfg.repo;
   cfg.token = document.getElementById('cfgToken').value.trim() || cfg.token;
@@ -547,100 +516,90 @@ async function connect() {
   setResult('⏳ 연결 중...', 'muted');
   document.getElementById('connectBtn').disabled = true;
 
-  try {
-    const res = await fetch(apiUrl(), { headers: getHeaders() });
+  fetch(ghUrl(), { headers: ghHeaders() })
+    .then(function(res) {
+      if (res.status === 401) throw new Error('Token이 올바르지 않아요');
+      if (res.status === 403) throw new Error('권한이 없어요. Token에 repo 권한 확인');
+      if (res.status === 404) {
+        stocks  = [];
+        fileSha = '';
+        onConnected('연결됨 — watchlist.json 새로 만들 예정');
+        return null;
+      }
+      if (!res.ok) return res.json().then(function(e) { throw new Error(e.message || 'HTTP ' + res.status); });
+      return res.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      fileSha = data.sha;
+      var raw     = atob(data.content.replace(/[\n\r]/g, ''));
+      var decoded = decodeURIComponent(escape(raw));
+      stocks  = JSON.parse(decoded);
+      onConnected(cfg.repo + '/' + FILE_PATH + ' 로드 완료 (' + stocks.length + '개 종목)');
+    })
+    .catch(function(e) {
+      document.getElementById('connDot').className  = 'pulse off';
+      document.getElementById('connLabel').textContent = '오류';
+      setResult('❌ ' + e.message, 'red');
+    })
+    .finally(function() {
+      document.getElementById('connectBtn').disabled = false;
+    });
+}
 
-    if (res.status === 401) throw new Error('Token이 올바르지 않아요. 토큰을 다시 확인해주세요.');
-    if (res.status === 403) throw new Error('권한이 없어요. Token에 repo 권한이 있는지 확인해주세요.');
-    if (res.status === 404) {
-      // watchlist.json이 아직 없는 경우 → 빈 배열로 시작
-      stocks  = [];
-      fileSha = '';
-      setConnected(true);
-      setResult('✅ 연결됨 (watchlist.json 없음 → 새로 만들 예정)', 'green');
-      saveConfig();
-      render();
-      return;
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'HTTP ' + res.status);
-    }
-
-    const data    = await res.json();
-    fileSha       = data.sha;
-    const raw     = atob(data.content.replace(/[\n\r]/g, ''));
-    const decoded = decodeURIComponent(escape(raw));
-    stocks        = JSON.parse(decoded);
-
-    setConnected(true);
-    setResult('✅ ' + cfg.repo + '/' + FILE_PATH + ' 로드 완료 (' + stocks.length + '개 종목)', 'green');
-    saveConfig();
-    render();
-
-    // 연결 성공 시 패널 닫기
-    document.getElementById('configBody').classList.remove('open');
-    document.getElementById('configArrow').classList.remove('open');
-
-    isDirty = false;
-    updateSaveBtn();
-
-  } catch(e) {
-    setConnected(false);
-    setResult('❌ ' + e.message, 'red');
-  } finally {
-    document.getElementById('connectBtn').disabled = false;
-  }
+function onConnected(msg) {
+  document.getElementById('connDot').className     = 'pulse';
+  document.getElementById('connLabel').textContent = '연결됨';
+  setResult('✅ ' + msg, 'green');
+  saveConfig();
+  render();
+  isDirty = false;
+  updateSaveBtn();
+  // 패널 닫기
+  document.getElementById('cfgBody').classList.remove('open');
+  document.getElementById('cfgArrow').classList.remove('open');
 }
 
 // ── GitHub에 저장 ─────────────────────────
-async function saveToGitHub() {
+function saveToGitHub() {
   if (!cfg.token) { toast('⚠️', '먼저 GitHub 연결을 완료해주세요'); return; }
-
   document.getElementById('savingOverlay').classList.add('show');
-  try {
-    const json    = JSON.stringify(stocks, null, 2);
-    const encoded = btoa(unescape(encodeURIComponent(json)));
 
-    const body = {
-      message: 'watchlist 업데이트 (' + new Date().toLocaleString('ko-KR') + ')',
-      content: encoded,
-    };
-    if (fileSha) body.sha = fileSha;
+  var json    = JSON.stringify(stocks, null, 2);
+  var encoded = btoa(unescape(encodeURIComponent(json)));
+  var body    = {
+    message: 'watchlist 업데이트 (' + new Date().toLocaleString('ko-KR') + ')',
+    content: encoded
+  };
+  if (fileSha) body.sha = fileSha;
 
-    const res = await fetch(apiUrl(), {
-      method:  'PUT',
-      headers: getHeaders(),
-      body:    JSON.stringify(body),
+  fetch(ghUrl(), { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body) })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(e) { throw new Error(e.message || 'HTTP ' + res.status); });
+      return res.json();
+    })
+    .then(function(data) {
+      fileSha = data.content.sha;
+      isDirty = false;
+      updateSaveBtn();
+      toast('🚀', 'GitHub 저장 완료! 다음 Actions 실행에 자동 반영돼요.');
+    })
+    .catch(function(e) { toast('❌', '저장 실패: ' + e.message); })
+    .finally(function() {
+      document.getElementById('savingOverlay').classList.remove('show');
     });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'HTTP ' + res.status);
-    }
-
-    const data = await res.json();
-    fileSha = data.content.sha;
-    isDirty = false;
-    updateSaveBtn();
-    toast('🚀', 'GitHub 저장 완료! 다음 Actions 실행에 자동 반영돼요.');
-
-  } catch(e) {
-    toast('❌', '저장 실패: ' + e.message);
-  } finally {
-    document.getElementById('savingOverlay').classList.remove('show');
-  }
 }
 
-// ══════════════════════════════════════════
-// 렌더링
-// ══════════════════════════════════════════
+// ── 렌더 ──────────────────────────────────
 function render() {
-  const el = document.getElementById('stockList');
+  var el = document.getElementById('stockList');
   if (!stocks || stocks.length === 0) {
     el.innerHTML = '<div class="empty"><div class="ei">📭</div>+ 종목 추가 버튼을 눌러 시작하세요</div>';
   } else {
-    el.innerHTML = '<div class="stock-list">' + stocks.map(stockHTML).join('') + '</div>';
+    var html = '<div class="stock-list">';
+    for (var i = 0; i < stocks.length; i++) html += stockHTML(stocks[i]);
+    html += '</div>';
+    el.innerHTML = html;
   }
   ['addBtn','refreshBtn','saveBtn'].forEach(function(id) {
     document.getElementById(id).disabled = false;
@@ -649,164 +608,131 @@ function render() {
 }
 
 function stockHTML(s) {
-  const lines = (s.lines || []).map(function(l, i) { return lineHTML(s.id, l, i); }).join('');
-  return [
-    '<div class="stock-card ' + (s.enabled ? '' : 'disabled-card') + '" id="card-' + s.id + '">',
-    '  <div class="card-header">',
-    '    <div class="ticker-tag">' + esc(s.ticker) + '</div>',
-    '    <div class="stock-name-wrap">',
-    '      <div class="stock-name">' + esc(s.name) + '</div>',
-    '      <div class="stock-meta" id="meta-' + s.id + '">' + (s.lines||[]).length + '개 수평선 · ' + (s.enabled ? '감시 중' : '비활성') + '</div>',
-    '    </div>',
-    '    <div class="card-actions">',
-    '      <label class="toggle">',
-    '        <input type="checkbox" ' + (s.enabled ? 'checked' : '') + ' onchange="toggleStock(\'' + s.id + '\',this.checked)">',
-    '        <div class="toggle-track"></div>',
-    '        <div class="toggle-thumb"></div>',
-    '      </label>',
-    '      <button class="btn btn-red btn-xs" onclick="removeStock(\'' + s.id + '\')">✕ 삭제</button>',
-    '    </div>',
-    '  </div>',
-    '  <div class="lines-section">',
-    '    <div class="lines-label">수평선 목록</div>',
-    '    <div class="lines-list" id="lines-' + s.id + '">' + lines + '</div>',
-    '    <button class="add-line-btn" onclick="addLine(\'' + s.id + '\')">＋ 수평선 추가</button>',
-    '  </div>',
-    '</div>',
-  ].join('');
+  var lines = '';
+  for (var i = 0; i < (s.lines||[]).length; i++) lines += lineHTML(s.id, s.lines[i], i);
+  return '<div class="stock-card ' + (s.enabled ? '' : 'disabled-card') + '" id="card-' + s.id + '">'
+    + '<div class="card-header">'
+    +   '<div class="ticker-tag">' + esc(s.ticker) + '</div>'
+    +   '<div class="stock-name-wrap">'
+    +     '<div class="stock-name">' + esc(s.name) + '</div>'
+    +     '<div class="stock-meta" id="meta-' + s.id + '">' + (s.lines||[]).length + '개 수평선 · ' + (s.enabled ? '감시 중' : '비활성') + '</div>'
+    +   '</div>'
+    +   '<div class="card-actions">'
+    +     '<label class="toggle">'
+    +       '<input type="checkbox" ' + (s.enabled ? 'checked' : '') + ' onchange="toggleStock(\'' + s.id + '\',this.checked)">'
+    +       '<div class="toggle-track"></div>'
+    +       '<div class="toggle-thumb"></div>'
+    +     '</label>'
+    +     '<button class="btn btn-red btn-xs" onclick="removeStock(\'' + s.id + '\')">✕ 삭제</button>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="lines-section">'
+    +   '<div class="lines-label">수평선 목록</div>'
+    +   '<div class="lines-list" id="lines-' + s.id + '">' + lines + '</div>'
+    +   '<button class="add-line-btn" onclick="addLine(\'' + s.id + '\')">＋ 수평선 추가</button>'
+    + '</div>'
+    + '</div>';
 }
 
 function lineHTML(sid, l, idx) {
-  const color = LINE_COLORS[idx % LINE_COLORS.length];
-  return [
-    '<div class="line-item" id="line-' + l.id + '">',
-    '  <div class="line-color" style="background:' + color + '"></div>',
-    '  <input class="line-label-input" value="' + esc(l.label) + '" placeholder="수평선 이름"',
-    '    onchange="updateLine(\'' + sid + '\',\'' + l.id + '\',\'label\',this.value)">',
-    '  <input class="line-price-input" type="number" value="' + l.price + '"',
-    '    oninput="updateLine(\'' + sid + '\',\'' + l.id + '\',\'price\',Number(this.value))">',
-    '  <span class="line-unit">원</span>',
-    '  <button class="line-del" onclick="removeLine(\'' + sid + '\',\'' + l.id + '\')">✕</button>',
-    '</div>',
-  ].join('');
+  var color = LINE_COLORS[idx % LINE_COLORS.length];
+  return '<div class="line-item" id="line-' + l.id + '">'
+    + '<div class="line-color" style="background:' + color + '"></div>'
+    + '<input class="line-label-input" value="' + esc(l.label) + '" placeholder="수평선 이름" onchange="updateLine(\'' + sid + '\',\'' + l.id + '\',\'label\',this.value)">'
+    + '<input class="line-price-input" type="number" value="' + l.price + '" oninput="updateLine(\'' + sid + '\',\'' + l.id + '\',\'price\',Number(this.value))">'
+    + '<span class="line-unit">원</span>'
+    + '<button class="line-del" onclick="removeLine(\'' + sid + '\',\'' + l.id + '\')">✕</button>'
+    + '</div>';
 }
 
-// ══════════════════════════════════════════
-// 종목 CRUD
-// ══════════════════════════════════════════
+// ── 종목 CRUD ─────────────────────────────
 function openAddStock() {
-  ['mTicker','mName','mPrice','mLabel'].forEach(function(id) {
-    document.getElementById(id).value = '';
-  });
+  ['mTicker','mName','mPrice','mLabel'].forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('addModal').classList.add('open');
   setTimeout(function() { document.getElementById('mTicker').focus(); }, 100);
 }
 
 function addStock() {
-  const ticker = document.getElementById('mTicker').value.trim().toUpperCase();
-  const name   = document.getElementById('mName').value.trim();
-  const price  = parseFloat(document.getElementById('mPrice').value);
-  const label  = document.getElementById('mLabel').value.trim() || '1차 지지선';
-
+  var ticker = document.getElementById('mTicker').value.trim().toUpperCase();
+  var name   = document.getElementById('mName').value.trim();
+  var price  = parseFloat(document.getElementById('mPrice').value);
+  var label  = document.getElementById('mLabel').value.trim() || '1차 지지선';
   if (!ticker || !name) { toast('⚠️', '종목코드와 종목명을 입력하세요'); return; }
-
-  const s = {
-    id:      uid(),
-    ticker:  ticker,
-    name:    name,
-    enabled: true,
-    lines:   price ? [{ id: uid(), price: price, label: label }] : [],
-  };
+  var s = { id: uid(), ticker: ticker, name: name, enabled: true,
+            lines: price ? [{ id: uid(), price: price, label: label }] : [] };
   stocks.unshift(s);
-  markDirty();
-  render();
-  closeModal('addModal');
+  markDirty(); render(); closeModal('addModal');
   toast('✅', name + ' (' + ticker + ') 추가됨');
 }
 
 function removeStock(sid) {
-  const s = stocks.find(function(x) { return x.id === sid; });
+  var s = stocks.filter(function(x){ return x.id === sid; })[0];
   if (!confirm('[' + (s ? s.ticker : '') + '] ' + (s ? s.name : '') + '을(를) 삭제할까요?')) return;
-  stocks = stocks.filter(function(x) { return x.id !== sid; });
-  markDirty();
-  render();
-  toast('🗑️', (s ? s.name : '') + ' 삭제됨');
+  stocks = stocks.filter(function(x){ return x.id !== sid; });
+  markDirty(); render();
+  toast('🗑️', (s ? s.name : sid) + ' 삭제됨');
 }
 
 function toggleStock(sid, val) {
-  const s = stocks.find(function(x) { return x.id === sid; });
+  var s = stocks.filter(function(x){ return x.id === sid; })[0];
   if (s) {
-    s.enabled = val;
-    markDirty();
-    const card = document.getElementById('card-' + sid);
+    s.enabled = val; markDirty();
+    var card = document.getElementById('card-' + sid);
     if (card) card.classList.toggle('disabled-card', !val);
-    const meta = document.getElementById('meta-' + sid);
+    var meta = document.getElementById('meta-' + sid);
     if (meta) meta.textContent = (s.lines||[]).length + '개 수평선 · ' + (val ? '감시 중' : '비활성');
     updateStats();
   }
 }
 
-// ══════════════════════════════════════════
-// 수평선 CRUD
-// ══════════════════════════════════════════
+// ── 수평선 CRUD ───────────────────────────
 function addLine(sid) {
-  const s = stocks.find(function(x) { return x.id === sid; });
+  var s = stocks.filter(function(x){ return x.id === sid; })[0];
   if (!s) return;
-  const newLine = { id: uid(), price: 0, label: '수평선 ' + ((s.lines||[]).length + 1) };
   if (!s.lines) s.lines = [];
+  var newLine = { id: uid(), price: 0, label: '수평선 ' + (s.lines.length + 1) };
   s.lines.push(newLine);
   markDirty();
-
-  const container = document.getElementById('lines-' + sid);
+  var container = document.getElementById('lines-' + sid);
   if (container) {
-    const tmp = document.createElement('div');
+    var tmp = document.createElement('div');
     tmp.innerHTML = lineHTML(sid, newLine, s.lines.length - 1);
     container.appendChild(tmp.firstElementChild);
-    const input = document.getElementById('line-' + newLine.id);
-    if (input) setTimeout(function() { input.querySelector('.line-price-input').focus(); }, 50);
+    var lineEl = document.getElementById('line-' + newLine.id);
+    if (lineEl) setTimeout(function(){ lineEl.querySelector('.line-price-input').focus(); }, 50);
   }
-  updateStats();
-
-  const meta = document.getElementById('meta-' + sid);
+  var meta = document.getElementById('meta-' + sid);
   if (meta) meta.textContent = s.lines.length + '개 수평선 · ' + (s.enabled ? '감시 중' : '비활성');
+  updateStats();
 }
 
 function removeLine(sid, lid) {
-  const s = stocks.find(function(x) { return x.id === sid; });
+  var s = stocks.filter(function(x){ return x.id === sid; })[0];
   if (!s) return;
-  s.lines = (s.lines||[]).filter(function(l) { return l.id !== lid; });
-  const el = document.getElementById('line-' + lid);
+  s.lines = (s.lines||[]).filter(function(l){ return l.id !== lid; });
+  var el = document.getElementById('line-' + lid);
   if (el) el.remove();
-  markDirty();
-  updateStats();
-  const meta = document.getElementById('meta-' + sid);
+  markDirty(); updateStats();
+  var meta = document.getElementById('meta-' + sid);
   if (meta) meta.textContent = s.lines.length + '개 수평선 · ' + (s.enabled ? '감시 중' : '비활성');
 }
 
 function updateLine(sid, lid, field, val) {
-  const s = stocks.find(function(x) { return x.id === sid; });
+  var s = stocks.filter(function(x){ return x.id === sid; })[0];
   if (!s) return;
-  const l = (s.lines||[]).find(function(x) { return x.id === lid; });
+  var l = (s.lines||[]).filter(function(x){ return x.id === lid; })[0];
   if (l) { l[field] = val; markDirty(); }
 }
 
-// ══════════════════════════════════════════
-// 유틸
-// ══════════════════════════════════════════
+// ── 유틸 ──────────────────────────────────
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function esc(s) {
-  return String(s||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
-function markDirty() {
-  isDirty = true;
-  updateSaveBtn();
-}
-
+function markDirty() { isDirty = true; updateSaveBtn(); }
 function updateSaveBtn() {
-  const btn = document.getElementById('saveBtn');
+  var btn = document.getElementById('saveBtn');
   if (!btn) return;
   if (isDirty) {
     btn.className = 'btn btn-yellow btn-sm';
@@ -816,44 +742,27 @@ function updateSaveBtn() {
     btn.innerHTML = '🚀 GitHub에 저장';
   }
 }
-
 function updateStats() {
-  const active = stocks.filter(function(s) { return s.enabled; }).length;
-  const lines  = stocks.reduce(function(n,s) { return n + (s.lines||[]).length; }, 0);
+  var active = stocks.filter(function(s){ return s.enabled; }).length;
+  var lines  = stocks.reduce(function(n,s){ return n + (s.lines||[]).length; }, 0);
   document.getElementById('activeCount').textContent = active;
   document.getElementById('lineCount').textContent   = lines;
 }
-
-function setConnected(ok) {
-  const dot   = document.getElementById('connDot');
-  const label = document.getElementById('connLabel');
-  if (ok) {
-    dot.className   = 'pulse';
-    label.textContent = '연결됨';
-  } else {
-    dot.className   = 'pulse off';
-    label.textContent = '오류';
-  }
-}
-
 function setResult(msg, color) {
-  const el = document.getElementById('connectResult');
-  el.textContent  = msg;
-  el.style.color  = color === 'green' ? 'var(--green)' : color === 'red' ? 'var(--red)' : 'var(--muted)';
+  var el = document.getElementById('connectResult');
+  el.textContent = msg;
+  el.style.color = color === 'green' ? 'var(--green)' : color === 'red' ? 'var(--red)' : 'var(--muted)';
 }
-
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-let toastTimer;
+var toastTimer;
 function toast(icon, msg) {
-  const el = document.getElementById('toast');
+  var el = document.getElementById('toast');
   document.getElementById('toastIcon').textContent = icon + ' ';
   document.getElementById('toastMsg').textContent  = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3500);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
 }
-
 window.addEventListener('beforeunload', function(e) {
   if (isDirty) { e.preventDefault(); e.returnValue = '저장하지 않은 변경사항이 있어요.'; }
 });
