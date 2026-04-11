@@ -363,7 +363,11 @@ function saveCfg(){
 // GitHub API
 // ══════════════════════════════════════════════════════
 function ghHdr(){
-  return {'Authorization':'Bearer '+cfg.token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'};
+  var h = new Headers();
+  h.append('Authorization', 'Bearer ' + cfg.token);
+  h.append('Content-Type', 'application/json');
+  h.append('Accept', 'application/vnd.github.v3+json');
+  return h;
 }
 function ghUrl(){
   return 'https://api.github.com/repos/'+cfg.user+'/'+cfg.repo+'/contents/watchlist.json';
