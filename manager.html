@@ -410,6 +410,13 @@ function connect(){
       if (!d) return;
       fileSha=d.sha;
       stocks=JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/[\n\r]/g,'')))));
+      // price_now를 prices 캐시에 미리 반영
+      stocks.forEach(function(s){
+        if(s.price_now){
+          var key=s.ticker+'_'+(s.market||'KR');
+          prices[key]={price:s.price_now,ts:Date.now()};
+        }
+      });
       onConnected('불러오기 완료 ('+stocks.length+'개 종목)');
     })
     .catch(function(e){
@@ -446,6 +453,12 @@ function refresh(){
     .then(function(d){
       fileSha=d.sha;
       stocks=JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/[\n\r]/g,'')))));
+      stocks.forEach(function(s){
+        if(s.price_now){
+          var key=s.ticker+'_'+(s.market||'KR');
+          prices[key]={price:s.price_now,ts:Date.now()};
+        }
+      });
       render(); fetchAllPrices(); toast('✅','새로고침 완료');
     }).catch(function(e){ toast('❌',e.message); });
 }
@@ -471,87 +484,39 @@ function saveToGH(silent){
 // ══════════════════════════════════════════════════════
 function yfSym(ticker,market){ return market==='KR'?ticker+'.KS':ticker; }
 
-function fetchYahoo(ticker,market){
-  if(market==='KR') return fetchKrNaver(ticker);
-  return fetchUsYahoo(ticker);
-}
-
-// 국내: 네이버 증권 — 최대 3회 재시도
-function fetchKrNaver(ticker, attempt){
-  attempt = attempt||0;
-  return fetch('https://m.stock.naver.com/api/stock/'+ticker+'/basic')
-    .then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    })
-    .then(function(d){
-      var name =d.stockName||'';
-      var price=parseFloat(String(d.closePrice||'').replace(/,/g,''))||null;
-      if(!price && attempt<2){
-        // 가격 없으면 잠시 후 재시도
-        return new Promise(function(res){
-          setTimeout(function(){ res(fetchKrNaver(ticker, attempt+1)); }, 800);
-        });
-      }
-      return {price:price, name:name};
-    })
-    .catch(function(){
-      if(attempt<2){
-        return new Promise(function(res){
-          setTimeout(function(){ res(fetchKrNaver(ticker, attempt+1)); }, 1000);
-        });
-      }
-      return {price:null, name:''};
-    });
-}
-
-// 미국: Yahoo Finance (프록시 경유)
-function fetchUsYahoo(ticker){
-  var direct='https://query1.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=1d';
-  var urls=[
-    'https://corsproxy.io/?'+encodeURIComponent(direct),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(direct)
-  ];
-  function tryNext(i){
-    if(i>=urls.length) return Promise.resolve({price:null,name:''});
-    return fetch(urls[i])
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var data=d.contents?JSON.parse(d.contents):d;
-        var meta=((data.chart||{}).result||[{}])[0].meta||{};
-        var p=meta.regularMarketPrice||meta.previousClose||null;
-        var n=meta.longName||meta.shortName||'';
-        if(!p&&!n) return tryNext(i+1);
-        return {price:p, name:n};
-      })
-      .catch(function(){ return tryNext(i+1); });
-  }
-  return tryNext(0);
-}
+// 현재가는 watchlist.json의 price_now 필드 사용 (GitHub Actions가 KIS API로 갱신)
+// 단, 즉각적인 표시를 위해 로드 시 price_now 바로 반영
 
 
 function fetchAllPrices(){
-  var spin=document.getElementById('mspin'); spin.classList.add('on');
-  document.getElementById('pbarTxt').textContent='현재가 조회 중...';
-  var seen={}, tasks=[];
+  // watchlist.json에 저장된 price_now 값을 바로 표시
+  // (GitHub Actions가 5분마다 KIS API로 갱신)
+  var spin=document.getElementById('mspin');
+  if(spin) spin.classList.add('on');
+  document.getElementById('pbarTxt').textContent='현재가 표시 중...';
+
   stocks.forEach(function(s){
     var key=s.ticker+'_'+s.market;
-    if (seen[key]) return; seen[key]=true;
-    tasks.push(
-      fetchYahoo(s.ticker,s.market).then(function(r){
-        // 가격 캐시
-        if (r.price) prices[key]={price:r.price,ts:Date.now()};
-        // 종목명 없으면 채우기
-        if (!s.name&&r.name){ s.name=r.name; isDirty=true; }
-        updatePriceUI(key,r.price);
-      })
-    );
+    var p=s.price_now||null;
+    if(p){
+      prices[key]={price:p, ts:Date.now()};
+      updatePriceUI(key, p);
+    } else {
+      var el=document.getElementById('pr-'+key);
+      if(el){ el.textContent='미조회 (장 시간 외)'; el.className='pr-val loading'; }
+    }
   });
-  Promise.all(tasks).then(function(){
-    spin.classList.remove('on');
-    document.getElementById('pbarTxt').textContent='업데이트: '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    if (isDirty){ updateSaveBtn(); updateNameUI(); }
-  });
+
+  if(spin) spin.classList.remove('on');
+  // 마지막 업데이트 시간 표시 (price_now가 있는 첫 번째 종목 기준)
+  var updated='';
+  for(var i=0;i<stocks.length;i++){
+    if(stocks[i].price_now){
+      updated='KIS API 기준 (5분 갱신)';
+      break;
+    }
+  }
+  document.getElementById('pbarTxt').textContent=updated||'현재가 없음 (장 시간 외)';
 }
 
 function updateNameUI(){
@@ -738,6 +703,63 @@ function addLineToStock(ticker,market,price,label){
 // ══════════════════════════════════════════════════════
 // 추가 모달
 // ══════════════════════════════════════════════════════
+function openAdd(){
+  addMode='stock';
+  document.getElementById('modalTtl').textContent='종목·수평선 추가';
+  selMkt('KR');
+  ['mTk','mPr','mLb'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('mTk').disabled=false;
+  document.getElementById('msKR').style.display='';
+  document.getElementById('msUS').style.display='';
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('mTk').focus(); },300);
+}
+
+function openAddLine(ticker,market){
+  addMode='line';
+  document.getElementById('modalTtl').textContent=ticker+' 수평선 추가';
+  selM=market;
+  document.getElementById('mTk').value=ticker; document.getElementById('mTk').disabled=true;
+  document.getElementById('mPr').value=''; document.getElementById('mLb').value='';
+  document.getElementById('msKR').style.display='none'; document.getElementById('msUS').style.display='none';
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('mPr').focus(); },300);
+}
+
+function selMkt(mkt){
+  selM=mkt;
+  document.getElementById('msKR').className='ms'+(mkt==='KR'?' kr':'');
+  document.getElementById('msUS').className='ms'+(mkt==='US'?' us':'');
+  if (mkt==='KR'){
+    document.getElementById('tkLbl').textContent='종목코드';
+    document.getElementById('mTk').placeholder='005930';
+    document.getElementById('mGuide').innerHTML='<b>국내주식</b>: 6자리 종목코드 입력<br>예) 삼성전자 <b>005930</b>, SK하이닉스 <b>000660</b><br>종목명·현재가는 자동으로 조회됩니다.';
+  } else {
+    document.getElementById('tkLbl').textContent='티커 (Ticker)';
+    document.getElementById('mTk').placeholder='AAPL';
+    document.getElementById('mGuide').innerHTML='<b>미국주식</b>: 티커 심볼 입력<br>예) <b>AAPL</b>, <b>TSLA</b>, <b>NVDA</b>, <b>MSFT</b><br>종목명·현재가는 자동으로 조회됩니다.';
+  }
+  if (addMode==='stock') document.getElementById('mTk').value='';
+}
+
+function doAdd(){
+  var ticker=document.getElementById('mTk').value.trim().toUpperCase();
+  var price=parseNum(document.getElementById('mPr').value)||0;
+  var label=document.getElementById('mLb').value.trim()||'1차 지지선';
+  if(!ticker){ toast('⚠️','티커를 입력하세요'); return; }
+  if(selM==='KR'&&!/^\d{6}$/.test(ticker)){ toast('⚠️','국내 종목코드는 6자리 숫자예요'); return; }
+  if(!price){ toast('⚠️','수평선 가격을 입력하세요'); return; }
+
+  var btn=document.getElementById('addOk'); btn.disabled=true;
+  showSOV('저장 중...');
+  addLineToStock(ticker,selM,price,label);
+  markDirty(); closeM('addModal'); render();
+  toast('✅',ticker+' 추가됨 — 종목명·현재가는 5분 내 자동 조회');
+  saveToGH(true);
+  btn.disabled=false;
+  hideSOV();
+}
+
 function openAdd(){
   addMode='stock';
   document.getElementById('modalTtl').textContent='종목·수평선 추가';
