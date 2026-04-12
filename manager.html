@@ -479,78 +479,36 @@ function fetchYahoo(ticker,market){
   return fetchUsYahoo(ticker);
 }
 
-// ── 국내주식: 네이버 증권 직접 호출 ──────────────────────────
-// m.stock.naver.com은 CORS 허용 — 프록시 불필요
+// 국내: 네이버 증권 직접 호출
 function fetchKrNaver(ticker){
-  var direct='https://m.stock.naver.com/api/stock/'+ticker+'/basic';
-  var proxy1='https://corsproxy.io/?'+encodeURIComponent(direct);
-  var proxy2='https://api.allorigins.win/raw?url='+encodeURIComponent(direct);
-
-  // 직접 호출 우선, 실패 시 프록시 시도
-  function parseNaver(d){
-    var name =d.stockName||'';
-    var price=parseFloat(String(d.closePrice||'').replace(/,/g,''))||null;
-    return {price:price, name:name};
-  }
-
-  return fetch(direct, {mode:'cors'})
-    .then(function(r){
-      if(!r.ok) throw new Error('direct fail');
-      return r.json();
-    })
+  return fetch('https://m.stock.naver.com/api/stock/'+ticker+'/basic')
+    .then(function(r){ return r.json(); })
     .then(function(d){
-      var r=parseNaver(d);
-      if(r.price||r.name) return r;
-      throw new Error('empty');
+      var name =d.stockName||'';
+      var price=parseFloat(String(d.closePrice||'').replace(/,/g,''))||null;
+      return {price:price, name:name};
     })
-    .catch(function(){
-      // proxy1 시도
-      return fetch(proxy1)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          // allorigins는 {contents:'...'} 형태로 감쌀 수 있음
-          var data = d.contents ? JSON.parse(d.contents) : d;
-          var r=parseNaver(data);
-          if(r.price||r.name) return r;
-          throw new Error('proxy1 empty');
-        })
-        .catch(function(){
-          // proxy2 시도
-          return fetch(proxy2)
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-              var data = d.contents ? JSON.parse(d.contents) : d;
-              return parseNaver(data);
-            })
-            .catch(function(){ return {price:null,name:''}; });
-        });
-    });
+    .catch(function(){ return {price:null, name:''}; });
 }
 
-// ── 미국주식: Yahoo Finance ───────────────────────────────────
+// 미국: Yahoo Finance (프록시 경유)
 function fetchUsYahoo(ticker){
   var direct='https://query1.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=1d';
-  var proxy1='https://corsproxy.io/?'+encodeURIComponent(direct);
-  var proxy2='https://api.allorigins.win/raw?url='+encodeURIComponent(direct);
-
-  function parseYahoo(d){
-    var meta=((d.chart||{}).result||[{}])[0].meta||{};
-    return {
-      price: meta.regularMarketPrice||meta.previousClose||null,
-      name:  meta.longName||meta.shortName||''
-    };
-  }
-
-  var urls=[proxy1, proxy2, direct];
+  var urls=[
+    'https://corsproxy.io/?'+encodeURIComponent(direct),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(direct)
+  ];
   function tryNext(i){
     if(i>=urls.length) return Promise.resolve({price:null,name:''});
     return fetch(urls[i])
       .then(function(r){ return r.json(); })
       .then(function(d){
         var data=d.contents?JSON.parse(d.contents):d;
-        var r=parseYahoo(data);
-        if(!r.price&&!r.name) return tryNext(i+1);
-        return r;
+        var meta=((data.chart||{}).result||[{}])[0].meta||{};
+        var p=meta.regularMarketPrice||meta.previousClose||null;
+        var n=meta.longName||meta.shortName||'';
+        if(!p&&!n) return tryNext(i+1);
+        return {price:p, name:n};
       })
       .catch(function(){ return tryNext(i+1); });
   }
