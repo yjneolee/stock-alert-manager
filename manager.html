@@ -19,6 +19,9 @@
 html,body{height:100%;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow-x:hidden;}
 
+/* topbar icon buttons */
+.btn-cfg{background:var(--s2);border:1px solid var(--bd);border-radius:7px;color:var(--muted);font-size:14px;cursor:pointer;padding:4px 8px;line-height:1;transition:all .15s;}
+.btn-cfg:active{background:var(--s3);color:var(--text);}
 /* topbar */
 .topbar{position:sticky;top:0;z-index:100;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:48px;}
 .app-name{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ac);letter-spacing:1px;}
@@ -213,9 +216,9 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
       <div class="chip">US <b id="usCnt">0</b></div>
       <div class="chip">선 <b id="lnCnt">0</b></div>
     </div>
-    <button class="btn btn-ghost btn-xs" id="refBtn" onclick="refresh()" disabled title="새로고침">↺</button>
-    <button class="btn btn-ghost btn-xs" onclick="dlExcel()" id="xlBtn" disabled title="Excel 다운로드">📥</button>
-    <button class="btn btn-ghost btn-xs" id="cfgBtn" onclick="toggleCfg()" title="GitHub 설정">⚙</button>
+    <button class="btn-cfg" id="refBtn" onclick="refresh()" title="새로고침">↺</button>
+    <button class="btn-cfg" onclick="dlExcel()" id="xlBtn" title="Excel 다운로드">📥</button>
+    <button class="btn-cfg" onclick="toggleCfg()" title="GitHub 설정">⚙</button>
   </div>
 </div>
 
@@ -425,9 +428,7 @@ function onConnected(msg){
   document.getElementById('filterbar').style.display='flex';
   document.getElementById('pbar').style.display='flex';
   document.getElementById('addBtn').disabled=false;
-  document.getElementById('refBtn').disabled=false;
   document.getElementById('saveBtn').disabled=true;
-  document.getElementById('xlBtn').disabled=false;
   // cfg 오버레이 상태 표시 업데이트
   var dot=document.getElementById('cfgDot');
   var txt=document.getElementById('cfgStatTxt');
