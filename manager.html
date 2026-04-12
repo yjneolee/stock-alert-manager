@@ -212,8 +212,8 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
   </div>
   <div style="display:flex;align-items:center;gap:4px">
     <div class="chips">
-      <div class="chip">🇰🇷 <b id="krCnt">0</b></div>
-      <div class="chip">🇺🇸 <b id="usCnt">0</b></div>
+      <div class="chip">KR <b id="krCnt">0</b></div>
+      <div class="chip">US <b id="usCnt">0</b></div>
       <div class="chip">선 <b id="lnCnt">0</b></div>
     </div>
     <button class="btn-cfg" id="refBtn" onclick="refresh()" title="새로고침">↺</button>
@@ -268,9 +268,12 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
       </div>
       <div class="g2">
         <div class="fld"><label id="tkLbl">종목코드</label><input id="mTk" placeholder="005930" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></div>
-        <div class="fld"><label>수평선 가격</label><input id="mPr" type="text" placeholder="70,000" inputmode="decimal" oninput="onModalPriceInput(this)" onblur="onModalPriceBlur(this)"></div>
+        <div class="fld"><label>종목명 <span style="color:var(--muted);font-size:9px">(국내: 직접입력)</span></label><input id="mNm" placeholder="삼성전자" autocomplete="off"></div>
       </div>
-      <div class="fld"><label>수평선 이름</label><input id="mLb" placeholder="1차 지지선"></div>
+      <div class="g2">
+        <div class="fld"><label>수평선 가격</label><input id="mPr" type="text" placeholder="70,000" inputmode="decimal" oninput="onModalPriceInput(this)" onblur="onModalPriceBlur(this)"></div>
+        <div class="fld"><label>수평선 이름</label><input id="mLb" placeholder="1차 지지선"></div>
+      </div>
       <div class="ibox" id="mGuide"><b>국내주식</b>: 6자리 종목코드<br>예) 삼성전자 <b>005930</b>, SK하이닉스 <b>000660</b><br>종목명·현재가는 자동으로 조회됩니다.</div>
     </div>
     <div class="mfoot">
@@ -472,12 +475,9 @@ function saveToGH(silent){
 function yfSym(ticker,market){ return market==='KR'?ticker+'.KS':ticker; }
 
 function fetchYahoo(ticker,market){
-  // 국내주식: 네이버 금융에서 한글 종목명 + 현재가 조회
-  if(market==='KR'){
-    return fetchKrNaver(ticker);
-  }
+  if(market==='KR') return fetchKrNaver(ticker);
   // 미국주식: Yahoo Finance (CORS 프록시)
-  var sym=yfSym(ticker,market);
+  var sym=ticker;
   var urls=[
     'https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d'),
     'https://api.allorigins.win/raw?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d')
@@ -499,48 +499,30 @@ function fetchYahoo(ticker,market){
   return tryNext(0);
 }
 
-// 국내주식: 네이버 금융 API (한글 종목명)
+// 국내주식: 네이버 증권 API
+// stockName = 한글 종목명, closePrice = 현재가(장중)/종가
 function fetchKrNaver(ticker){
-  // 네이버 금융 JSON API (CORS 프록시 경유)
-  var naverUrl='https://finance.naver.com/item/main.nhn?code='+ticker;
   var apiUrl='https://m.stock.naver.com/api/stock/'+ticker+'/basic';
-  var proxied='https://corsproxy.io/?'+encodeURIComponent(apiUrl);
-  return fetch(proxied)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      // 네이버 모바일 API 응답: {stockName, closePrice, ...}
-      var name=d.stockName||d.name||'';
-      var price=parseFloat((d.closePrice||d.currentPrice||'').toString().replace(/,/g,''))||null;
-      if(name) return {price:price,name:name};
-      return fetchKrYahoo(ticker);
-    })
-    .catch(function(){
-      return fetchKrYahoo(ticker);
-    });
-}
-
-// 국내주식 fallback: Yahoo Finance (한글명 없을 수 있음)
-function fetchKrYahoo(ticker){
-  var sym=ticker+'.KS';
-  var urls=[
-    'https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d'),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d')
+  var proxies=[
+    'https://corsproxy.io/?'+encodeURIComponent(apiUrl),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(apiUrl)
   ];
-  function tryNext(i){
-    if(i>=urls.length) return Promise.resolve({price:null,name:''});
-    return fetch(urls[i])
+  function tryProxy(i){
+    if(i>=proxies.length) return Promise.resolve({price:null,name:''});
+    return fetch(proxies[i])
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var res=((d.chart||{}).result||[])[0]||{};
-        var meta=res.meta||{};
-        var p=meta.regularMarketPrice||meta.previousClose||null;
-        var n=meta.longName||meta.shortName||'';
-        return {price:p,name:n};
+        var name=d.stockName||'';
+        var priceRaw=d.closePrice||'';
+        var price=parseFloat(String(priceRaw).replace(/,/g,''))||null;
+        if(!price&&!name) return tryProxy(i+1);
+        return {price:price, name:name};
       })
-      .catch(function(){ return tryNext(i+1); });
+      .catch(function(){ return tryProxy(i+1); });
   }
-  return tryNext(0);
+  return tryProxy(0);
 }
+
 
 function fetchAllPrices(){
   var spin=document.getElementById('mspin'); spin.classList.add('on');
@@ -754,7 +736,7 @@ function openAdd(){
   addMode='stock';
   document.getElementById('modalTtl').textContent='종목·수평선 추가';
   selMkt('KR');
-  ['mTk','mPr','mLb'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['mTk','mNm','mPr','mLb'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('mTk').disabled=false;
   document.getElementById('msKR').style.display='';
   document.getElementById('msUS').style.display='';
@@ -780,11 +762,13 @@ function selMkt(mkt){
   if (mkt==='KR'){
     document.getElementById('tkLbl').textContent='종목코드';
     document.getElementById('mTk').placeholder='005930';
-    document.getElementById('mGuide').innerHTML='<b>국내주식</b>: 6자리 종목코드<br>예) 삼성전자 <b>005930</b>, SK하이닉스 <b>000660</b><br>종목명·현재가는 자동으로 조회됩니다.';
+    document.getElementById('mNm').placeholder='삼성전자 (직접 입력)';
+    document.getElementById('mGuide').innerHTML='<b>국내주식</b>: 종목코드 + 종목명 직접 입력<br>예) 삼성전자 <b>005930</b>, SK하이닉스 <b>000660</b><br>현재가는 자동 조회됩니다.';
   } else {
     document.getElementById('tkLbl').textContent='티커 (Ticker)';
     document.getElementById('mTk').placeholder='AAPL';
-    document.getElementById('mGuide').innerHTML='<b>미국주식</b>: 티커 심볼<br>예) <b>AAPL</b>, <b>TSLA</b>, <b>NVDA</b>, <b>MSFT</b><br>종목명·현재가는 자동으로 조회됩니다.';
+    document.getElementById('mNm').placeholder='자동 조회됩니다';
+    document.getElementById('mGuide').innerHTML='<b>미국주식</b>: 티커 심볼 입력 — 종목명 자동 조회<br>예) <b>AAPL</b>, <b>TSLA</b>, <b>NVDA</b>, <b>MSFT</b>';
   }
   if (addMode==='stock') document.getElementById('mTk').value='';
 }
@@ -803,7 +787,8 @@ function doAdd(){
     addLineToStock(ticker,selM,price,label);
     // 종목명 채우기
     var s=stocks.filter(function(x){ return x.ticker===ticker&&x.market===selM; })[0];
-    if (s&&!s.name&&r.name) s.name=r.name;
+    var manualName=document.getElementById('mNm').value.trim();
+    if (s) s.name = manualName || r.name || '';
     if (r.price) prices[ticker+'_'+selM]={price:r.price,ts:Date.now()};
     markDirty(); closeM('addModal'); render();
     Object.keys(prices).forEach(function(k){ if(prices[k]) updatePriceUI(k,prices[k].price); });
@@ -811,8 +796,11 @@ function doAdd(){
     saveToGH(true);
   }).catch(function(e){
     addLineToStock(ticker,selM,price,label);
+    var s2=stocks.filter(function(x){ return x.ticker===ticker&&x.market===selM; })[0];
+    var manualName2=document.getElementById('mNm').value.trim();
+    if (s2&&manualName2) s2.name=manualName2;
     markDirty(); closeM('addModal'); render();
-    toast('⚠️',ticker+' 추가됨 (종목명 조회 실패) — 저장 중...');
+    toast('⚠️',ticker+' 추가됨 — 저장 중...');
     saveToGH(true);
     toast('⚠️',ticker+' 추가됨 — 저장 필요');
   }).finally(function(){ btn.disabled=false; hideSOV(); });
