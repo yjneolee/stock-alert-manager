@@ -363,11 +363,11 @@ function saveCfg(){
 // GitHub API
 // ══════════════════════════════════════════════════════
 function ghHdr(){
-  var h = new Headers();
-  h.append('Authorization', 'Bearer ' + cfg.token);
-  h.append('Content-Type', 'application/json');
-  h.append('Accept', 'application/vnd.github.v3+json');
-  return h;
+  var tok = (cfg.token || "").split("").filter(function(c){ return c.charCodeAt(0) < 128; }).join("");
+  return {
+    "Authorization": "Bearer " + tok,
+    "Content-Type": "application/json"
+  };
 }
 function ghUrl(){
   return 'https://api.github.com/repos/'+cfg.user+'/'+cfg.repo+'/contents/watchlist.json';
@@ -411,6 +411,7 @@ function onConnected(msg){
   document.getElementById('pbar').style.display='flex';
   document.getElementById('addBtn').disabled=false;
   document.getElementById('refBtn').disabled=false;
+  document.getElementById('saveBtn').disabled=true;
   document.getElementById('cfgBd').classList.remove('open');
   document.getElementById('cfgArr').classList.remove('open');
   render();
@@ -450,17 +451,25 @@ function yfSym(ticker,market){ return market==='KR'?ticker+'.KS':ticker; }
 
 function fetchYahoo(ticker,market){
   var sym=yfSym(ticker,market);
-  return fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1d')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var result=((d.chart||{}).result||[])[0]||{};
-      var meta=result.meta||{};
-      return {
-        price: meta.regularMarketPrice||meta.previousClose||null,
-        name:  meta.longName||meta.shortName||''
-      };
-    })
-    .catch(function(){ return {price:null,name:''}; });
+  var urls=[
+    'https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d'),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d')
+  ];
+  function tryNext(i){
+    if(i>=urls.length) return Promise.resolve({price:null,name:''});
+    return fetch(urls[i])
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var res=((d.chart||{}).result||[])[0]||{};
+        var meta=res.meta||{};
+        var p=meta.regularMarketPrice||meta.previousClose||null;
+        var n=meta.longName||meta.shortName||'';
+        if(!p&&!n) return tryNext(i+1);
+        return {price:p,name:n};
+      })
+      .catch(function(){ return tryNext(i+1); });
+  }
+  return tryNext(0);
 }
 
 function fetchAllPrices(){
@@ -729,12 +738,12 @@ function doAdd(){
     markDirty(); closeM('addModal'); render();
     // 가격 즉시 표시
     Object.keys(prices).forEach(function(k){ if(prices[k]) updatePriceUI(k,prices[k].price); });
-    toast('✅',ticker+' 추가됨'+(r.name?' — '+r.name:'')+'<br>저장 버튼으로 GitHub에 반영하세요');
+    toast('✅',ticker+' 추가됨'+(r.name?' — '+r.name:''));
   }).catch(function(e){
     // 조회 실패해도 추가는 진행
     addLineToStock(ticker,selM,price,label);
     markDirty(); closeM('addModal'); render();
-    toast('⚠️',ticker+' 추가됨 (종목명 조회 실패)');
+    toast('⚠️',ticker+' 추가됨 — 저장 필요');
   }).finally(function(){ btn.disabled=false; hideSOV(); });
 }
 
@@ -746,9 +755,9 @@ function markDirty(){
 }
 function updateSaveBtn(){
   var btn=document.getElementById('saveBtn'); if(!btn) return;
-  btn.style.display=isDirty?'':'none';
+  btn.disabled=!isDirty;
   btn.className=isDirty?'btn btn-yellow btn-sm':'btn btn-green btn-sm';
-  btn.innerHTML=isDirty?'⚠️ GitHub에 저장':'🚀 저장';
+  btn.innerHTML=isDirty?'⚠️ GitHub에 저장':'✅ 저장됨';
 }
 
 // ══════════════════════════════════════════════════════
@@ -761,7 +770,7 @@ function hideSOV(){ document.getElementById('sov').classList.remove('on'); }
 function setRes(m,c){ var e=document.getElementById('cres'); e.textContent=m; e.style.color=c==='green'?'var(--green)':c==='red'?'var(--red)':'var(--muted)'; }
 function closeM(id){ document.getElementById(id).classList.remove('open'); }
 var tt;
-function toast(icon,msg){ var e=document.getElementById('toast'); document.getElementById('tIcon').textContent=icon+' '; document.getElementById('tMsg').textContent=msg; e.classList.add('on'); clearTimeout(tt); tt=setTimeout(function(){ e.classList.remove('on'); },3500); }
+function toast(icon,msg){ var e=document.getElementById('toast'); document.getElementById('tIcon').textContent=icon+' '; document.getElementById('tMsg').innerHTML=msg; e.classList.add('on'); clearTimeout(tt); tt=setTimeout(function(){ e.classList.remove('on'); },3500); }
 window.addEventListener('beforeunload',function(e){ if(isDirty){ e.preventDefault(); e.returnValue='저장하지 않은 변경사항이 있어요.'; } });
 </script>
 </body>
