@@ -268,7 +268,7 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
       </div>
       <div class="g2">
         <div class="fld"><label id="tkLbl">종목코드</label><input id="mTk" placeholder="005930" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></div>
-        <div class="fld"><label>수평선 가격</label><input id="mPr" type="number" placeholder="70000" inputmode="decimal"></div>
+        <div class="fld"><label>수평선 가격</label><input id="mPr" type="text" placeholder="70,000" inputmode="decimal" oninput="onModalPriceInput(this)" onblur="onModalPriceBlur(this)"></div>
       </div>
       <div class="fld"><label>수평선 이름</label><input id="mLb" placeholder="1차 지지선"></div>
       <div class="ibox" id="mGuide"><b>국내주식</b>: 6자리 종목코드<br>예) 삼성전자 <b>005930</b>, SK하이닉스 <b>000660</b><br>종목명·현재가는 자동으로 조회됩니다.</div>
@@ -472,6 +472,11 @@ function saveToGH(silent){
 function yfSym(ticker,market){ return market==='KR'?ticker+'.KS':ticker; }
 
 function fetchYahoo(ticker,market){
+  // 국내주식: 네이버 금융에서 한글 종목명 + 현재가 조회
+  if(market==='KR'){
+    return fetchKrNaver(ticker);
+  }
+  // 미국주식: Yahoo Finance (CORS 프록시)
   var sym=yfSym(ticker,market);
   var urls=[
     'https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d'),
@@ -487,6 +492,49 @@ function fetchYahoo(ticker,market){
         var p=meta.regularMarketPrice||meta.previousClose||null;
         var n=meta.longName||meta.shortName||'';
         if(!p&&!n) return tryNext(i+1);
+        return {price:p,name:n};
+      })
+      .catch(function(){ return tryNext(i+1); });
+  }
+  return tryNext(0);
+}
+
+// 국내주식: 네이버 금융 API (한글 종목명)
+function fetchKrNaver(ticker){
+  // 네이버 금융 JSON API (CORS 프록시 경유)
+  var naverUrl='https://finance.naver.com/item/main.nhn?code='+ticker;
+  var apiUrl='https://m.stock.naver.com/api/stock/'+ticker+'/basic';
+  var proxied='https://corsproxy.io/?'+encodeURIComponent(apiUrl);
+  return fetch(proxied)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      // 네이버 모바일 API 응답: {stockName, closePrice, ...}
+      var name=d.stockName||d.name||'';
+      var price=parseFloat((d.closePrice||d.currentPrice||'').toString().replace(/,/g,''))||null;
+      if(name) return {price:price,name:name};
+      return fetchKrYahoo(ticker);
+    })
+    .catch(function(){
+      return fetchKrYahoo(ticker);
+    });
+}
+
+// 국내주식 fallback: Yahoo Finance (한글명 없을 수 있음)
+function fetchKrYahoo(ticker){
+  var sym=ticker+'.KS';
+  var urls=[
+    'https://corsproxy.io/?'+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d'),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=1d')
+  ];
+  function tryNext(i){
+    if(i>=urls.length) return Promise.resolve({price:null,name:''});
+    return fetch(urls[i])
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var res=((d.chart||{}).result||[])[0]||{};
+        var meta=res.meta||{};
+        var p=meta.regularMarketPrice||meta.previousClose||null;
+        var n=meta.longName||meta.shortName||'';
         return {price:p,name:n};
       })
       .catch(function(){ return tryNext(i+1); });
@@ -601,7 +649,7 @@ function lineHTML(key,l,idx){
     +'<div class="li-main">'
     +'<div class="li-top">'
     +'<input class="li-lbl" value="'+esc(l.label)+'" placeholder="이름" onchange="markE(\''+l.id+'\',\'label\',this.value)">'
-    +'<input class="li-price" type="number" value="'+l.price+'" inputmode="decimal" oninput="markE(\''+l.id+'\',\'price\',this.value)">'
+    +'<input class="li-price" type="text" value="'+fmtNum(l.price)+'" inputmode="decimal" oninput="onPriceInput(this,\''+l.id+'\')" onblur="onPriceBlur(this,\''+l.id+'\')">'  
     +'</div>'
     +'<div class="li-gap" id="gap-'+l.id+'"><span class="gc na">─</span></div>'
     +'</div>'
@@ -743,7 +791,7 @@ function selMkt(mkt){
 
 function doAdd(){
   var ticker=document.getElementById('mTk').value.trim().toUpperCase();
-  var price=parseFloat(document.getElementById('mPr').value)||0;
+  var price=parseNum(document.getElementById('mPr').value)||0;
   var label=document.getElementById('mLb').value.trim()||'1차 지지선';
   if (!ticker){ toast('⚠️','티커를 입력하세요'); return; }
   if (selM==='KR'&&!/^\d{6}$/.test(ticker)){ toast('⚠️','국내 종목코드는 6자리 숫자예요'); return; }
@@ -787,6 +835,36 @@ function updateSaveBtn(){
 // ══════════════════════════════════════════════════════
 // 유틸
 // ══════════════════════════════════════════════════════
+// 숫자 → 콤마 포맷
+function fmtNum(v){
+  var n=parseFloat(String(v||'').replace(/,/g,''));
+  if(!n&&n!==0) return '';
+  return n.toLocaleString('ko-KR');
+}
+// 콤마 포맷 문자열 → 숫자
+function parseNum(v){
+  return parseFloat(String(v||'').replace(/,/g,''))||0;
+}
+// 수평선 가격 입력 중 (콤마 실시간)
+function onPriceInput(el,lid){
+  var raw=el.value.replace(/,/g,'').replace(/[^0-9.]/g,'');
+  el.value=raw;
+  markE(lid,'price',parseNum(raw));
+}
+// 수평선 가격 포커스 아웃 시 콤마 포맷
+function onPriceBlur(el,lid){
+  var n=parseNum(el.value);
+  if(n) el.value=fmtNum(n);
+  markE(lid,'price',n);
+}
+// 추가 모달 가격 입력
+function onModalPriceInput(el){
+  el.value=el.value.replace(/[^0-9.,]/g,'');
+}
+function onModalPriceBlur(el){
+  var n=parseNum(el.value);
+  if(n) el.value=fmtNum(n);
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // cfg 오버레이 토글
