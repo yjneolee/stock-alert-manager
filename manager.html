@@ -172,6 +172,19 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
 .ibox{background:var(--s2);border:1px solid var(--bd2);border-radius:7px;padding:9px 11px;font-size:12px;color:var(--muted);line-height:1.6;font-family:var(--mono);}
 .ibox b{color:var(--text);}
 
+/* cfg overlay */
+.cfg-overlay{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:flex-end;padding:52px 12px 0;}
+.cfg-overlay.open{display:flex;}
+.cfg-overlay-bg{position:fixed;inset:0;z-index:299;}
+.cfg-box{background:var(--s1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:300;animation:cfgIn .2s ease;}
+@keyframes cfgIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.cfg-box-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--bd);background:var(--s2);}
+.cfg-box-title{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;}
+.cfg-box-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:0 2px;}
+.cfg-box-body{padding:14px;display:flex;flex-direction:column;gap:10px;}
+.conn-status{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.conn-status b{color:var(--green);}
+
 /* saving */
 .sov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:600;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 .sov.on{display:flex;}
@@ -194,13 +207,15 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
       <span id="connLbl">미연결</span>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:5px">
+  <div style="display:flex;align-items:center;gap:4px">
     <div class="chips">
       <div class="chip">KR <b id="krCnt">0</b></div>
       <div class="chip">US <b id="usCnt">0</b></div>
       <div class="chip">선 <b id="lnCnt">0</b></div>
     </div>
-    <button class="btn btn-ghost btn-xs" id="refBtn" onclick="refresh()" disabled>↺</button>
+    <button class="btn btn-ghost btn-xs" id="refBtn" onclick="refresh()" disabled title="새로고침">↺</button>
+    <button class="btn btn-ghost btn-xs" onclick="dlExcel()" id="xlBtn" disabled title="Excel 다운로드">📥</button>
+    <button class="btn btn-ghost btn-xs" id="cfgBtn" onclick="toggleCfg()" title="GitHub 설정">⚙</button>
   </div>
 </div>
 
@@ -220,39 +235,11 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
 <!-- main -->
 <div class="main">
 
-  <!-- GitHub 설정 -->
-  <div class="cfg">
-    <div class="cfg-hd" id="cfgHd">
-      <span class="cfg-hd-title">⚙ GitHub 연결 설정</span>
-      <span class="cfg-arrow" id="cfgArr">▼</span>
-    </div>
-    <div class="cfg-body" id="cfgBd">
-      <div class="guide">
-        <div class="guide-t">Personal Access Token 발급</div>
-        <div class="guide-steps">
-          <div class="gs"><div class="gsn">1</div><span>github.com → 프로필 → <code>Settings</code></span></div>
-          <div class="gs"><div class="gsn">2</div><span>왼쪽 맨 아래 <code>Developer settings</code></span></div>
-          <div class="gs"><div class="gsn">3</div><span><code>Tokens (classic)</code> → <code>Generate new token</code> → 권한 <code>repo</code> 체크</span></div>
-        </div>
-      </div>
-      <div class="g2">
-        <div class="fld"><label>GitHub Username</label><input id="cfgUser" placeholder="username" autocomplete="off"></div>
-        <div class="fld"><label>Repository (Private)</label><input id="cfgRepo" placeholder="stock-alert" autocomplete="off"></div>
-      </div>
-      <div class="fld"><label>Personal Access Token</label><input id="cfgTok" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off"></div>
-      <div class="cr">
-        <button class="btn btn-ac btn-sm" id="connBtn" onclick="connect()" style="flex:1;justify-content:center">🔗 연결 및 불러오기</button>
-        <button class="btn btn-ghost btn-sm" onclick="saveCfg()">💾 저장</button>
-      </div>
-      <span id="cres"></span>
-    </div>
-  </div>
-
   <!-- 현재가 갱신 상태 -->
   <div class="pbar" id="pbar" style="display:none">
     <div class="mspin" id="mspin"></div>
     <span id="pbarTxt"></span>
-    <button class="btn btn-ghost btn-xs" onclick="fetchAllPrices()" style="padding:2px 7px;font-size:10px">📡 갱신</button>
+    <button class="btn btn-ghost btn-xs" onclick="fetchAllPrices()" style="padding:2px 7px;font-size:10px">📡</button>
   </div>
 
   <div id="slist"><div class="empty"><div class="ei">🔌</div>GitHub 연결 설정을 완료해주세요</div></div>
@@ -290,6 +277,38 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
   </div>
 </div>
 
+<!-- cfg overlay -->
+<div class="cfg-overlay" id="cfgOverlay">
+  <div class="cfg-overlay-bg" onclick="toggleCfg()"></div>
+  <div class="cfg-box">
+    <div class="cfg-box-hd">
+      <span class="cfg-box-title">⚙ GitHub 연결 설정</span>
+      <button class="cfg-box-close" onclick="toggleCfg()">✕</button>
+    </div>
+    <div class="cfg-box-body">
+      <div class="conn-status" id="cfgStatus"><div class="pulse off" id="cfgDot"></div><span id="cfgStatTxt">미연결</span></div>
+      <div class="guide">
+        <div class="guide-t">Personal Access Token 발급</div>
+        <div class="guide-steps">
+          <div class="gs"><div class="gsn">1</div><span>github.com → 프로필 → <code>Settings</code></span></div>
+          <div class="gs"><div class="gsn">2</div><span>맨 아래 <code>Developer settings</code></span></div>
+          <div class="gs"><div class="gsn">3</div><span><code>Tokens (classic)</code> → <code>Generate new token</code> → <code>repo</code> 체크</span></div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="fld"><label>GitHub Username</label><input id="cfgUser" placeholder="username" autocomplete="off"></div>
+        <div class="fld"><label>Repository (Private)</label><input id="cfgRepo" placeholder="stock-alert" autocomplete="off"></div>
+      </div>
+      <div class="fld"><label>Personal Access Token</label><input id="cfgTok" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off"></div>
+      <div class="cr">
+        <button class="btn btn-ac btn-sm" id="connBtn" onclick="connect()" style="flex:1;justify-content:center">🔗 연결</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveCfg()">💾</button>
+      </div>
+      <span id="cres"></span>
+    </div>
+  </div>
+</div>
+
 <!-- saving overlay -->
 <div class="sov" id="sov"><div class="spinner"></div><div class="sov-txt" id="sovTxt">처리 중...</div></div>
 
@@ -317,10 +336,7 @@ var LINE_COLORS = ['#ff4d6a','#ffb020','#00d68f','#3d9eff','#9d7cf4','#f472b6','
 // ══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
   // cfg toggle
-  document.getElementById('cfgHd').addEventListener('click', function() {
-    var b=document.getElementById('cfgBd'), a=document.getElementById('cfgArr');
-    b.classList.contains('open')?(b.classList.remove('open'),a.classList.remove('open')):(b.classList.add('open'),a.classList.add('open'));
-  });
+  // cfg 오버레이는 topbar ⚙ 버튼으로 제어
   // 저장된 설정 복원
   try {
     var s=localStorage.getItem('pa_cfg2');
@@ -348,8 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openCfg(){
-  document.getElementById('cfgBd').classList.add('open');
-  document.getElementById('cfgArr').classList.add('open');
+  document.getElementById('cfgOverlay').classList.add('open');
 }
 function saveCfg(){
   cfg.user =document.getElementById('cfgUser').value.trim();
@@ -412,8 +427,14 @@ function onConnected(msg){
   document.getElementById('addBtn').disabled=false;
   document.getElementById('refBtn').disabled=false;
   document.getElementById('saveBtn').disabled=true;
-  document.getElementById('cfgBd').classList.remove('open');
-  document.getElementById('cfgArr').classList.remove('open');
+  document.getElementById('xlBtn').disabled=false;
+  // cfg 오버레이 상태 표시 업데이트
+  var dot=document.getElementById('cfgDot');
+  var txt=document.getElementById('cfgStatTxt');
+  if(dot){ dot.className='pulse'; }
+  if(txt){ txt.innerHTML='연결됨: <b>'+cfg.user+'/'+cfg.repo+'</b>'; }
+  // 오버레이 닫기
+  document.getElementById('cfgOverlay').classList.remove('open');
   render();
   fetchAllPrices();
 }
@@ -764,6 +785,43 @@ function updateSaveBtn(){
 // 유틸
 // ══════════════════════════════════════════════════════
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// cfg 오버레이 토글
+function toggleCfg(){
+  var ov=document.getElementById('cfgOverlay');
+  ov.classList.toggle('open');
+}
+
+// Excel 다운로드 (watchlist → .xlsx 유사 CSV)
+function dlExcel(){
+  if(!stocks.length){ toast('⚠️','다운로드할 데이터가 없어요'); return; }
+  var rows=[['티커','시장','종목명','수평선가격','수평선이름','현재가','갭(%)','활성']];
+  stocks.forEach(function(s){
+    var key=s.ticker+'_'+s.market;
+    var p=prices[key]?prices[key].price:null;
+    if(!s.lines||!s.lines.length){
+      rows.push([s.ticker,s.market,s.name||'','','',p||'','',s.enabled?'Y':'N']);
+    } else {
+      s.lines.forEach(function(l){
+        var gap=null;
+        if(p&&l.price){ gap=((p-l.price)/p*100).toFixed(1); }
+        rows.push([s.ticker,s.market,s.name||'',l.price,l.label,p||'',gap!==null?gap:'',s.enabled?'Y':'N']);
+      });
+    }
+  });
+  // BOM + CSV (Excel에서 한글 깨짐 방지)
+  var csv='﻿'+rows.map(function(r){
+    return r.map(function(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }).join(',');
+  }).join('
+');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='watchlist_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('📥','다운로드 완료 (Excel에서 열 수 있어요)');
+}
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function showSOV(t){ document.getElementById('sov').classList.add('on'); document.getElementById('sovTxt').textContent=t||'처리 중...'; }
 function hideSOV(){ document.getElementById('sov').classList.remove('on'); }
