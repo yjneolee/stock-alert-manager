@@ -251,7 +251,7 @@ code{font-family:var(--mono);font-size:10px;background:var(--s3);border:1px soli
 <!-- bottombar -->
 <div class="bottombar">
   <button class="btn btn-ac btn-sm" id="addBtn" onclick="openAdd()" disabled>＋ 종목·수평선 추가</button>
-  <button class="btn btn-green btn-sm" id="saveBtn" onclick="saveToGH()" disabled style="display:none">🚀 저장</button>
+  <button class="btn btn-green btn-sm" id="saveBtn" onclick="saveToGH()" disabled>🚀 저장</button>
 </div>
 
 <!-- 추가 모달 -->
@@ -450,8 +450,8 @@ function refresh(){
     }).catch(function(e){ toast('❌',e.message); });
 }
 
-function saveToGH(){
-  showSOV('GitHub 저장 중...');
+function saveToGH(silent){
+  if(!silent) showSOV('GitHub 저장 중...');
   var json=JSON.stringify(stocks,null,2);
   var enc=btoa(unescape(encodeURIComponent(json)));
   var body={message:'watchlist 업데이트 ('+new Date().toLocaleString('ko-KR')+')',content:enc};
@@ -460,10 +460,10 @@ function saveToGH(){
     .then(function(r){ if(!r.ok) return r.json().then(function(e){ throw new Error(e.message||'HTTP '+r.status); }); return r.json(); })
     .then(function(d){
       fileSha=d.content.sha; isDirty=false; updateSaveBtn();
-      toast('🚀','GitHub 저장 완료!');
+      if(!silent) toast('🚀','GitHub 저장 완료!');
     })
     .catch(function(e){ toast('❌','저장 실패: '+e.message); })
-    .finally(hideSOV);
+    .finally(function(){ if(!silent) hideSOV(); });
 }
 
 // ══════════════════════════════════════════════════════
@@ -758,13 +758,14 @@ function doAdd(){
     if (s&&!s.name&&r.name) s.name=r.name;
     if (r.price) prices[ticker+'_'+selM]={price:r.price,ts:Date.now()};
     markDirty(); closeM('addModal'); render();
-    // 가격 즉시 표시
     Object.keys(prices).forEach(function(k){ if(prices[k]) updatePriceUI(k,prices[k].price); });
     toast('✅',ticker+' 추가됨'+(r.name?' — '+r.name:''));
+    saveToGH(true);
   }).catch(function(e){
-    // 조회 실패해도 추가는 진행
     addLineToStock(ticker,selM,price,label);
     markDirty(); closeM('addModal'); render();
+    toast('⚠️',ticker+' 추가됨 (종목명 조회 실패) — 저장 중...');
+    saveToGH(true);
     toast('⚠️',ticker+' 추가됨 — 저장 필요');
   }).finally(function(){ btn.disabled=false; hideSOV(); });
 }
@@ -778,6 +779,7 @@ function markDirty(){
 function updateSaveBtn(){
   var btn=document.getElementById('saveBtn'); if(!btn) return;
   btn.disabled=!isDirty;
+  btn.style.display='';
   btn.className=isDirty?'btn btn-yellow btn-sm':'btn btn-green btn-sm';
   btn.innerHTML=isDirty?'⚠️ GitHub에 저장':'✅ 저장됨';
 }
