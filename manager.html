@@ -750,14 +750,12 @@ function doAdd(){
   if(selM==='KR'&&!/^\d{6}$/.test(ticker)){ toast('⚠️','국내 종목코드는 6자리 숫자예요'); return; }
   if(!price){ toast('⚠️','수평선 가격을 입력하세요'); return; }
 
-  var btn=document.getElementById('addOk'); btn.disabled=true;
-  showSOV('저장 중...');
   addLineToStock(ticker,selM,price,label);
-  markDirty(); closeM('addModal'); render();
-  toast('✅',ticker+' 추가됨 — 종목명·현재가는 5분 내 자동 조회');
+  markDirty();
+  closeM('addModal');
+  render();
+  toast('✅',ticker+' 추가됨 — 종목명·현재가는 다음 조회 시 자동 반영');
   saveToGH(true);
-  btn.disabled=false;
-  hideSOV();
 }
 
 function openAdd(){
